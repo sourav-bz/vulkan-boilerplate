@@ -10,6 +10,7 @@
 
 ### Folder structure
 
+```
 ├── CMakeLists.txt
 ├── readme.md
 ├── .gitignore
@@ -54,3 +55,4 @@
 │ ├── FileUtils.cpp
 │ ├── VulkanUtils.cpp
 │ └── Math.h
+```
