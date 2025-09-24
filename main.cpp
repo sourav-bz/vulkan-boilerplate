@@ -37,8 +37,8 @@
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 const int MAX_FRAMES_IN_FLIGHT = 2;
-const std::string MODEL_PATH = "../models/viking_room.obj";
-const std::string TEXTURE_PATH = "../textures/viking_room.png";
+const std::string MODEL_PATH = "../assets/models/viking_room.obj";
+const std::string TEXTURE_PATH = "../assets/textures/viking_room.png";
 
 const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
@@ -1528,10 +1528,10 @@ private:
         VkApplicationInfo appInfo{};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         appInfo.pApplicationName = "Vulkan Triangle";
-        appInfo.applicationVersion = VK_MAKE_VERSION(1, 4, 321);
+        appInfo.applicationVersion = VK_MAKE_VERSION(1, 3, 321);
         appInfo.pEngineName = "No Engine";
-        appInfo.engineVersion = VK_MAKE_VERSION(1, 4, 321);
-        appInfo.apiVersion = VK_API_VERSION_1_4;
+        appInfo.engineVersion = VK_MAKE_VERSION(1, 3, 321);
+        appInfo.apiVersion = VK_API_VERSION_1_3;
 
         VkInstanceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
