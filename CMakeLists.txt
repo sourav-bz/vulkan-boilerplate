@@ -8,6 +8,11 @@ find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 
-add_executable(vulkan_triangle src/main.cpp src/core/VulkanInstance.cpp)
+set(SOURCES
+    src/main.cpp
+    src/core/VulkanInstance.cpp
+)
+
+add_executable(vulkan_triangle ${SOURCES})
 target_link_libraries(vulkan_triangle ${Vulkan_LIBRARIES} glfw glm::glm)
 target_include_directories(vulkan_triangle PRIVATE ${Vulkan_INCLUDE_DIRS} external/stb external/tiny_obj)
