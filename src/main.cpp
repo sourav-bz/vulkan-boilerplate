@@ -69,6 +69,12 @@ private:
     bool show_demo_window = true;
     bool show_another_window = true;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    
+    // Transformation control variables
+    glm::vec3 modelPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 modelRotation = glm::vec3(0.0f, 0.0f, 0.0f); // Euler angles in degrees
+    glm::vec3 modelScale = glm::vec3(1.0f, 1.0f, 1.0f);
+    bool show_transform_window = true;
 
 public:
     MyVulkanApp() : VulkanApplication({
@@ -77,49 +83,58 @@ public:
         .windowTitle = "Vulkan Boilerplate with ImGui",
         .maxFramesInFlight = 2,
         .enableValidation = true,
-        .enableGui = true  // Enable GUI
+        .enableGui = true
     }) {}
 
 protected:
-    // Override the GUI rendering method
     void renderGui() override {
-        // This is the GUI content from the ImGui example
-        
-        // 1. Show the big demo window
-        if (show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
-
-        // 2. Show a simple window that we create ourselves
-        {
-            static float f = 0.0f;
-            static int counter = 0;
-
-            ImGui::Begin("Hello, world!");
-
-            ImGui::Text("This is some useful text.");
-            ImGui::Checkbox("Demo Window", &show_demo_window);
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-            ImGui::ColorEdit3("clear color", (float*)&clear_color);
-
-            if (ImGui::Button("Button"))
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGuiIO& io = ImGui::GetIO();
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 
-                       1000.0f / io.Framerate, io.Framerate);
-            ImGui::End();
-        }
-
-        // 3. Show another simple window
-        if (show_another_window) {
-            ImGui::Begin("Another Window", &show_another_window);
-            ImGui::Text("Hello from another window!");
-            if (ImGui::Button("Close Me"))
-                show_another_window = false;
+        if (show_transform_window) {
+            ImGui::Begin("Model Transform Controls", &show_transform_window);
+            
+            ImGui::Text("Control the mesh transformation:");
+            ImGui::Separator();
+            
+            // Position controls
+            ImGui::Text("Position:");
+            ImGui::SliderFloat("X Position", &modelPosition.x, -5.0f, 5.0f, "%.2f");
+            ImGui::SliderFloat("Y Position", &modelPosition.y, -5.0f, 5.0f, "%.2f");
+            ImGui::SliderFloat("Z Position", &modelPosition.z, -5.0f, 5.0f, "%.2f");
+            
+            ImGui::Separator();
+            
+            // Rotation controls (in degrees)
+            ImGui::Text("Rotation (degrees):");
+            ImGui::SliderFloat("X Rotation", &modelRotation.x, -180.0f, 180.0f, "%.1f°");
+            ImGui::SliderFloat("Y Rotation", &modelRotation.y, -180.0f, 180.0f, "%.1f°");
+            ImGui::SliderFloat("Z Rotation", &modelRotation.z, -180.0f, 180.0f, "%.1f°");
+            
+            ImGui::Separator();
+            
+            // Scale controls
+            ImGui::Text("Scale:");
+            ImGui::SliderFloat("X Scale", &modelScale.x, 0.1f, 3.0f, "%.2f");
+            ImGui::SliderFloat("Y Scale", &modelScale.y, 0.1f, 3.0f, "%.2f");
+            ImGui::SliderFloat("Z Scale", &modelScale.z, 0.1f, 3.0f, "%.2f");
+            
+            // Uniform scale option
+            static bool uniform_scale = false;
+            ImGui::Checkbox("Uniform Scale", &uniform_scale);
+            if (uniform_scale) {
+                static float uniform_scale_value = 1.0f;
+                if (ImGui::SliderFloat("Scale Value", &uniform_scale_value, 0.1f, 3.0f, "%.2f")) {
+                    modelScale = glm::vec3(uniform_scale_value);
+                }
+            }
+            
+            ImGui::Separator();
+            
+            // Reset button
+            if (ImGui::Button("Reset Transform")) {
+                modelPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+                modelRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+                modelScale = glm::vec3(1.0f, 1.0f, 1.0f);
+            }
+            
             ImGui::End();
         }
     }
@@ -146,12 +161,16 @@ protected:
     }
 
     void updateUniforms(uint32_t currentImage) override {
-        static auto startTime = std::chrono::high_resolution_clock::now();
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
         UniformBufferObject ubo{};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        
+        glm::mat4 translation = glm::translate(glm::mat4(1.0f), modelPosition);
+        glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(modelRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        rotation = glm::rotate(rotation, glm::radians(modelRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        rotation = glm::rotate(rotation, glm::radians(modelRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        glm::mat4 scaling = glm::scale(glm::mat4(1.0f), modelScale);
+        
+        ubo.model = translation * rotation * scaling;
+        
         ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), vulkanSwapchain_->getExtent().width / (float) vulkanSwapchain_->getExtent().height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1;
