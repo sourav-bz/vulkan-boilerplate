@@ -155,14 +155,4 @@ void CommandManager::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indexCount), 1, 0, 0, 0);
-
-    vkCmdEndRenderPass(commandBuffer);
-
-    VkResult endCommandBufferResult = vkEndCommandBuffer(commandBuffer);
-    if ( endCommandBufferResult != VK_SUCCESS) {
-        std::cout << "failed to end recording command buffer - " << endCommandBufferResult << std::endl;
-        throw std::runtime_error("failed to record command buffer!");
-    }else{
-        //std::cout << "Successfully ended recording command buffer - " << endCommandBufferResult << std::endl;
-    }
 }

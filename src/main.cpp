@@ -30,6 +30,7 @@
 #include "resources/BufferManager.h"
 #include "resources/TextureManager.h"
 #include "descriptors/DescriptorManager.h"
+#include "ui/GuiManager.h"
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -64,16 +65,64 @@ private:
     VkImageView depthImageView_;
     std::vector<VkFramebuffer> swapChainFramebuffers_;
 
+    // GUI state variables (from the ImGui example)
+    bool show_demo_window = true;
+    bool show_another_window = true;
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
 public:
     MyVulkanApp() : VulkanApplication({
-        .windowWidth = 800,
-        .windowHeight = 600,
-        .windowTitle = "Vulkan Boilerplate Setup",
+        .windowWidth = 1280,
+        .windowHeight = 800,
+        .windowTitle = "Vulkan Boilerplate with ImGui",
         .maxFramesInFlight = 2,
-        .enableValidation = true
+        .enableValidation = true,
+        .enableGui = true  // Enable GUI
     }) {}
 
 protected:
+    // Override the GUI rendering method
+    void renderGui() override {
+        // This is the GUI content from the ImGui example
+        
+        // 1. Show the big demo window
+        if (show_demo_window)
+            ImGui::ShowDemoWindow(&show_demo_window);
+
+        // 2. Show a simple window that we create ourselves
+        {
+            static float f = 0.0f;
+            static int counter = 0;
+
+            ImGui::Begin("Hello, world!");
+
+            ImGui::Text("This is some useful text.");
+            ImGui::Checkbox("Demo Window", &show_demo_window);
+            ImGui::Checkbox("Another Window", &show_another_window);
+
+            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
+            ImGui::ColorEdit3("clear color", (float*)&clear_color);
+
+            if (ImGui::Button("Button"))
+                counter++;
+            ImGui::SameLine();
+            ImGui::Text("counter = %d", counter);
+
+            ImGuiIO& io = ImGui::GetIO();
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 
+                       1000.0f / io.Framerate, io.Framerate);
+            ImGui::End();
+        }
+
+        // 3. Show another simple window
+        if (show_another_window) {
+            ImGui::Begin("Another Window", &show_another_window);
+            ImGui::Text("Hello from another window!");
+            if (ImGui::Button("Close Me"))
+                show_another_window = false;
+            ImGui::End();
+        }
+    }
 
     void initializeResources() override {
         textureManager_->createDepthResources(vulkanSwapchain_->getExtent(), depthImage_, depthImageMemory_, depthImageView_);
@@ -126,6 +175,19 @@ protected:
             currentFrame_,
             static_cast<uint32_t>(indices_.size())
         );
+        
+        // Render GUI if enabled (still within the render pass)
+        if (config_.enableGui && guiManager_) {
+            guiManager_->render(commandBuffer);
+        }
+        
+        // End render pass and command buffer
+        vkCmdEndRenderPass(commandBuffer);
+        
+        VkResult result = vkEndCommandBuffer(commandBuffer);
+        if (result != VK_SUCCESS) {
+            throw std::runtime_error("Failed to end command buffer recording!");
+        }
     }
     
     void onCleanup() override {

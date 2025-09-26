@@ -13,6 +13,7 @@ class CommandManager;
 class BufferManager;
 class TextureManager;
 class DescriptorManager;
+class GuiManager;
 
 class VulkanApplication{
     public:
@@ -22,6 +23,7 @@ class VulkanApplication{
             std::string windowTitle = "Vulkan Boilerplate";
             uint32_t maxFramesInFlight = 2;
             bool enableValidation = true;
+            bool enableGui = true; 
         };
 
         VulkanApplication(const Config& config);
@@ -33,6 +35,7 @@ class VulkanApplication{
         virtual void initializeResources() {}
         virtual void updateUniforms(uint32_t currentImage) {}
         virtual void recordRenderCommands(VkCommandBuffer commnadBuffer, uint32_t imageIndex) {}
+        virtual void renderGui() {}
         virtual void onCleanup() {} 
 
         Config config_;
@@ -47,6 +50,7 @@ class VulkanApplication{
         std::unique_ptr<BufferManager> bufferManager_;
         std::unique_ptr<TextureManager> textureManager_;
         std::unique_ptr<DescriptorManager> descriptorManager_;
+        std::unique_ptr<GuiManager> guiManager_;
 
         std::vector<VkSemaphore> imageAvailableSemaphores_;
         std::vector<VkSemaphore> renderFinishedSemaphores_;

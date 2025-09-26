@@ -7,6 +7,7 @@
 #include "../resources/BufferManager.h"
 #include "../resources/TextureManager.h"
 #include "../descriptors/DescriptorManager.h"
+#include "../ui/GuiManager.h"
 #include <stdexcept>
 #include <iostream>
 #include <memory>
@@ -66,6 +67,16 @@ void VulkanApplication::initVulkan(){
     descriptorManager_ = std::make_unique<DescriptorManager>();
     descriptorManager_->initialize(*vulkanDevice_);
 
+    // Initialize GUI if enabled
+    if (config_.enableGui) {
+        GuiManager::Config guiConfig;
+        guiConfig.maxFramesInFlight = config_.maxFramesInFlight;
+        guiManager_ = std::make_unique<GuiManager>(guiConfig);
+        guiManager_->initialize(window_, vulkanInstance_->getInstance(), 
+                               vulkanDevice_.get(), vulkanSwapchain_.get(), 
+                               vulkanPipeline_->getRenderPass());
+    }
+
     createSyncObjects();
 
     initializeResources();
@@ -116,6 +127,13 @@ void VulkanApplication::drawFrame() {
     vkResetFences(vulkanDevice_->getLogicalDevice(), 1, &inFlightFences_[currentFrame_]);
 
     updateUniforms(currentFrame_);
+
+    // Start GUI frame if enabled
+    if (config_.enableGui && guiManager_) {
+        guiManager_->newFrame();
+        renderGui();  // Call derived class GUI rendering
+    }
+
     // Record command buffer - delegate to derived class
     recordRenderCommands(commandManager_->getCommandBuffer(currentFrame_), imageIndex);
 
@@ -183,6 +201,11 @@ void VulkanApplication::cleanup() {
     }
 
     onCleanup();
+
+    // Cleanup GUI
+    if (guiManager_) {
+        guiManager_.reset();
+    }
 
     for (size_t i = 0; i < config_.maxFramesInFlight; i++) {
         if (vulkanDevice_ && vulkanDevice_->getLogicalDevice()) {
