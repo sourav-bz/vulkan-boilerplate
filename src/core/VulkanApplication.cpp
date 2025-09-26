@@ -71,6 +71,8 @@ void VulkanApplication::initVulkan(){
     if (config_.enableGui) {
         GuiManager::Config guiConfig;
         guiConfig.maxFramesInFlight = config_.maxFramesInFlight;
+        guiConfig.fontPath = config_.fontPath;
+        guiConfig.fontSize = config_.fontSize;
         guiManager_ = std::make_unique<GuiManager>(guiConfig);
         guiManager_->initialize(window_, vulkanInstance_->getInstance(), 
                                vulkanDevice_.get(), vulkanSwapchain_.get(), 

@@ -23,7 +23,9 @@ class VulkanApplication{
             std::string windowTitle = "Vulkan Boilerplate";
             uint32_t maxFramesInFlight = 2;
             bool enableValidation = true;
-            bool enableGui = true; 
+            bool enableGui = true;
+            std::string fontPath = "";
+            float fontSize = 16.0f;
         };
 
         VulkanApplication(const Config& config);

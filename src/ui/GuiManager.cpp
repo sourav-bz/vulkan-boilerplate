@@ -22,6 +22,17 @@ void GuiManager::initialize(GLFWwindow* window, VkInstance instance, VulkanDevic
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     
+    // Load custom font if specified
+    if (!config_.fontPath.empty()) {
+        ImFont* font = io.Fonts->AddFontFromFileTTF(config_.fontPath.c_str(), config_.fontSize);
+        if (font == nullptr) {
+            std::cerr << "Warning: Failed to load font from " << config_.fontPath << ". Using default font." << std::endl;
+        } else {
+            io.FontDefault = font;
+            std::cout << "Successfully loaded font: " << config_.fontPath << " at size " << config_.fontSize << std::endl;
+        }
+    }
+    
     // Enable basic features
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;

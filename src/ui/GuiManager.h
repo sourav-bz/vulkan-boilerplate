@@ -6,6 +6,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 #include <functional>
+#include <string>
 
 class VulkanDevice;
 class VulkanSwapchain;
@@ -15,6 +16,8 @@ public:
     struct Config {
         uint32_t maxFramesInFlight = 2;
         VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+        std::string fontPath = "";
+        float fontSize = 16.0f;
     };
 
     GuiManager(const Config& config);

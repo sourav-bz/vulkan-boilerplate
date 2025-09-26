@@ -83,7 +83,9 @@ public:
         .windowTitle = "Vulkan Boilerplate with ImGui",
         .maxFramesInFlight = 2,
         .enableValidation = true,
-        .enableGui = true
+        .enableGui = true,
+        .fontPath = "../assets/fonts/Roboto-Regular.ttf",
+        .fontSize = 16.0f
     }) {}
 
 protected:
