@@ -40,6 +40,7 @@
 #include "rendering/VulkanSwapchain.h"
 #include "rendering/VulkanGraphicsPipeline.h"
 #include "rendering/CommandManager.h"
+#include "resources/BufferManager.h"
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -62,14 +63,16 @@ public:
     }
 
 private:
-    GLFWwindow* window;
     VulkanInstance vulkanInstance;
     VulkanDevice vulkanDevice;
-    VkSurfaceKHR surface;
     VulkanSwapchain vulkanSwapchain;
     VulkanGraphicsPipeline vulkanPipeline;
-    std::vector<VkFramebuffer> swapChainFramebuffers;
     CommandManager commandManager;
+    BufferManager bufferManager;
+
+    GLFWwindow* window;
+    VkSurfaceKHR surface;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
@@ -93,42 +96,6 @@ private:
     VkImage depthImage;
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
-
-    void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory){
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        if (vkCreateBuffer(vulkanDevice.getLogicalDevice(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create buffer!");
-        }
-
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(vulkanDevice.getLogicalDevice(), buffer, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = vulkanDevice.findMemoryType(memRequirements.memoryTypeBits, properties);
-
-        if (vkAllocateMemory(vulkanDevice.getLogicalDevice(), &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate buffer memory!");
-        }
-
-        vkBindBufferMemory(vulkanDevice.getLogicalDevice(), buffer, bufferMemory, 0);
-    }
-
-    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size){
-        VkCommandBuffer commandBuffer = commandManager.beginSingleTimeCommands();
-
-        VkBufferCopy copyRegion{};
-        copyRegion.size = size;
-        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-        commandManager.endSingleTimeCommands(commandBuffer);
-    }
 
     void updateUniformBuffer(uint32_t currentImage){
         static auto startTime = std::chrono::high_resolution_clock::now();
@@ -313,15 +280,16 @@ private:
         vulkanSwapchain.initialize(vulkanDevice, surface, window);
         vulkanPipeline.initialize(vulkanDevice, vulkanSwapchain);
         commandManager.initialize(vulkanDevice, MAX_FRAMES_IN_FLIGHT);
+        bufferManager.initialize(vulkanDevice, commandManager);
         createDepthResources();
         createFramebuffers();
         createTextureImage();
         createTextureImageView();
         createTextureSampler();
         loadModel();
-        createVertexBuffers();
-        createIndexBuffer();
-        createUniformBuffers();
+        bufferManager.createVertexBuffer(vertices, vertexBuffer, vertexBufferMemory);
+        bufferManager.createIndexBuffer(indices, indexBuffer, indexBufferMemory);
+        bufferManager.createUniformBuffer(MAX_FRAMES_IN_FLIGHT, uniformBuffers, uniformBuffersMemory, uniformBuffersMapped);
         createDescriptorPool();
         createDescriptorSets();
         createSyncObjects();
@@ -438,55 +406,6 @@ private:
         }
     }
 
-    void createUniformBuffers(){
-        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-        uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-            vkMapMemory(vulkanDevice.getLogicalDevice(), uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
-        }
-    }
-
-    void createIndexBuffer(){
-        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-        void* data;
-        vkMapMemory(vulkanDevice.getLogicalDevice(), stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy(data, indices.data(), (size_t) bufferSize);
-        vkUnmapMemory(vulkanDevice.getLogicalDevice(), stagingBufferMemory);
-
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-        copyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
-        vkDestroyBuffer(vulkanDevice.getLogicalDevice(), stagingBuffer, nullptr);
-        vkFreeMemory(vulkanDevice.getLogicalDevice(), stagingBufferMemory, nullptr);
-    }
-
-    void createVertexBuffers(){
-        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-        void* data;
-        vkMapMemory(vulkanDevice.getLogicalDevice(), stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy(data, vertices.data(), (size_t) bufferSize);
-        vkUnmapMemory(vulkanDevice.getLogicalDevice(), stagingBufferMemory);
-
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-        copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-        vkDestroyBuffer(vulkanDevice.getLogicalDevice(), stagingBuffer, nullptr);
-        vkFreeMemory(vulkanDevice.getLogicalDevice(), stagingBufferMemory, nullptr);
-    }
-
     void loadModel(){
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
@@ -571,7 +490,7 @@ private:
 
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
-        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+        bufferManager.createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
         void* data;
         vkMapMemory(vulkanDevice.getLogicalDevice(), stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, pixels, static_cast<size_t>(imageSize));
@@ -741,15 +660,13 @@ private:
         vkDestroyImageView(vulkanDevice.getLogicalDevice(), textureImageView, nullptr);
         vkDestroyImage(vulkanDevice.getLogicalDevice(), textureImage, nullptr);
         vkFreeMemory(vulkanDevice.getLogicalDevice(), textureImageMemory, nullptr);
+
+        bufferManager.destroyBuffer(indexBuffer, indexBufferMemory);
+        bufferManager.destroyBuffer(vertexBuffer, vertexBufferMemory);
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vkDestroyBuffer(vulkanDevice.getLogicalDevice(), uniformBuffers[i], nullptr);
-            vkFreeMemory(vulkanDevice.getLogicalDevice(), uniformBuffersMemory[i], nullptr);
+            bufferManager.destroyBuffer(uniformBuffers[i], uniformBuffersMemory[i]);
         }
         vkDestroyDescriptorPool(vulkanDevice.getLogicalDevice(), descriptorPool, nullptr);
-        vkDestroyBuffer(vulkanDevice.getLogicalDevice(), indexBuffer, nullptr);
-        vkFreeMemory(vulkanDevice.getLogicalDevice(), indexBufferMemory, nullptr);
-        vkDestroyBuffer(vulkanDevice.getLogicalDevice(), vertexBuffer, nullptr);
-        vkFreeMemory(vulkanDevice.getLogicalDevice(), vertexBufferMemory, nullptr);
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroySemaphore(vulkanDevice.getLogicalDevice(), renderFinishedSemaphores[i], nullptr);
             vkDestroySemaphore(vulkanDevice.getLogicalDevice(), imageAvailableSemaphores[i], nullptr);

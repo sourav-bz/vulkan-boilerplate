@@ -16,6 +16,7 @@ set(SOURCES
     src/rendering/VulkanSwapchain.cpp
     src/rendering/VulkanGraphicsPipeline.cpp
     src/rendering/CommandManager.cpp
+    src/resources/BufferManager.cpp
 )
 
 add_executable(vulkan_triangle ${SOURCES})
