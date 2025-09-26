@@ -34,11 +34,12 @@
 #include <array>
 #include <unordered_map>
 
+#include "common/Vertex.h"
 #include "core/VulkanInstance.h"
 #include "core/VulkanDevice.h"
 #include "rendering/VulkanSwapchain.h"
 #include "rendering/VulkanGraphicsPipeline.h"
-#include "common/Vertex.h"
+#include "rendering/CommandManager.h"
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -68,8 +69,7 @@ private:
     VulkanSwapchain vulkanSwapchain;
     VulkanGraphicsPipeline vulkanPipeline;
     std::vector<VkFramebuffer> swapChainFramebuffers;
-    VkCommandPool commandPool;
-    std::vector<VkCommandBuffer> commandBuffers;
+    CommandManager commandManager;
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
@@ -93,104 +93,6 @@ private:
     VkImage depthImage;
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
-
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = 0; // Optional
-        beginInfo.pInheritanceInfo = nullptr; // Optional
-
-        VkResult beginCommandBufferResult = vkBeginCommandBuffer(commandBuffer, &beginInfo);
-        if ( beginCommandBufferResult != VK_SUCCESS) {
-            std::cout << "failed to begin recording command buffer - " << beginCommandBufferResult << std::endl;
-            throw std::runtime_error("failed to begin recording command buffer!");
-        }else{
-            //std::cout << "Successfully started recording command buffer - " << beginCommandBufferResult << std::endl;
-        }
-
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = vulkanPipeline.getRenderPass();
-        renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-        renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = vulkanSwapchain.getExtent();
-
-        std::array<VkClearValue, 2> clearValues{};
-        clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-        clearValues[1].depthStencil = {1.0f, 0};
-
-        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-        renderPassInfo.pClearValues = clearValues.data();
-
-        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline.getGraphicsPipeline());
-
-        VkBuffer vertexBuffers[] = {vertexBuffer};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = static_cast<float>(vulkanSwapchain.getExtent().width);
-        viewport.height = static_cast<float>(vulkanSwapchain.getExtent().height);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-        VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = vulkanSwapchain.getExtent();
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline.getPipelineLayout(), 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-
-        vkCmdEndRenderPass(commandBuffer);
-
-        VkResult endCommandBufferResult = vkEndCommandBuffer(commandBuffer);
-        if ( endCommandBufferResult != VK_SUCCESS) {
-            std::cout << "failed to end recording command buffer - " << endCommandBufferResult << std::endl;
-            throw std::runtime_error("failed to record command buffer!");
-        }else{
-            //std::cout << "Successfully ended recording command buffer - " << endCommandBufferResult << std::endl;
-        }
-    }
-
-    VkCommandBuffer beginSingleTimeCommands() {
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(vulkanDevice.getLogicalDevice(), &allocInfo, &commandBuffer);
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-        return commandBuffer;
-    }
-
-    void endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-        vkEndCommandBuffer(commandBuffer);
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        vkQueueSubmit(vulkanDevice.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(vulkanDevice.getGraphicsQueue());
-
-        vkFreeCommandBuffers(vulkanDevice.getLogicalDevice(), commandPool, 1, &commandBuffer);
-    }
 
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory){
         VkBufferCreateInfo bufferInfo{};
@@ -219,13 +121,13 @@ private:
     }
 
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size){
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+        VkCommandBuffer commandBuffer = commandManager.beginSingleTimeCommands();
 
         VkBufferCopy copyRegion{};
         copyRegion.size = size;
         vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-        endSingleTimeCommands(commandBuffer);
+        commandManager.endSingleTimeCommands(commandBuffer);
     }
 
     void updateUniformBuffer(uint32_t currentImage){
@@ -278,7 +180,7 @@ private:
     }
 
     void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+        VkCommandBuffer commandBuffer = commandManager.beginSingleTimeCommands();
 
         VkImageMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -335,11 +237,11 @@ private:
             1, &barrier
         );
 
-        endSingleTimeCommands(commandBuffer);
+        commandManager.endSingleTimeCommands(commandBuffer);
     }
 
     void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+        VkCommandBuffer commandBuffer = commandManager.beginSingleTimeCommands();
 
         VkBufferImageCopy region{};
         region.bufferOffset = 0;
@@ -367,7 +269,7 @@ private:
             &region
         );
 
-        endSingleTimeCommands(commandBuffer);
+        commandManager.endSingleTimeCommands(commandBuffer);
     }
 
     VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
@@ -410,7 +312,7 @@ private:
         vulkanDevice.initialize(vulkanInstance, surface);
         vulkanSwapchain.initialize(vulkanDevice, surface, window);
         vulkanPipeline.initialize(vulkanDevice, vulkanSwapchain);
-        createCommandPool();
+        commandManager.initialize(vulkanDevice, MAX_FRAMES_IN_FLIGHT);
         createDepthResources();
         createFramebuffers();
         createTextureImage();
@@ -422,7 +324,6 @@ private:
         createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
-        createCommandBuffer();
         createSyncObjects();
     }
 
@@ -463,24 +364,6 @@ private:
             }else{
                 std::cout<< "Successfully created inFlightFence for frame " << i << " - " << inFlightFenceResult << std::endl;
             }
-        }
-    }
-
-    void createCommandBuffer(){
-        commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
-
-        VkResult result = vkAllocateCommandBuffers(vulkanDevice.getLogicalDevice(), &allocInfo, commandBuffers.data());
-        if (result != VK_SUCCESS) {
-            std::cout<< "failed to create command buffer - " << result <<std::endl;
-            throw std::runtime_error("failed to allocate command buffers!");
-        }else{
-            std::cout<< "successfully created command buffer - " << result <<std::endl;
         }
     }
 
@@ -713,23 +596,6 @@ private:
         transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     }
 
-    void createCommandPool(){
-        QueueFamilyIndices queueFamilyIndices = vulkanDevice.findQueueFamilies(vulkanDevice.getPhysicalDevice());
-
-        VkCommandPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-
-        VkResult result = vkCreateCommandPool(vulkanDevice.getLogicalDevice(), &poolInfo, nullptr, &commandPool);
-        if (result != VK_SUCCESS) {
-            std::cout<< "failed to create command pool - " << result <<std::endl;
-            throw std::runtime_error("failed to create command pool!");
-        }else{
-            std::cout<< "Successfully created command pool - " << result <<std::endl;
-        }
-    }
-
     void createFramebuffers(){
         const std::vector<VkImageView>& swapChainImageViews = vulkanSwapchain.getImageViews();
         swapChainFramebuffers.resize(swapChainImageViews.size());
@@ -788,8 +654,21 @@ private:
             throw std::runtime_error("failed to acquire swap chain image!");
         }
         vkResetFences(vulkanDevice.getLogicalDevice(), 1, &inFlightFences[currentFrame]);
-        vkResetCommandBuffer(commandBuffers[currentFrame], 0);
-        recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
+        commandManager.resetCommandBuffer(currentFrame);
+        commandManager.recordCommandBuffer(
+            commandManager.getCommandBuffer(currentFrame), 
+            imageIndex,
+            vulkanPipeline.getRenderPass(),
+            swapChainFramebuffers[imageIndex],
+            vulkanSwapchain.getExtent(),
+            vulkanPipeline.getGraphicsPipeline(),
+            vulkanPipeline.getPipelineLayout(),
+            vertexBuffer,
+            indexBuffer,
+            descriptorSets,
+            currentFrame,
+            static_cast<uint32_t>(indices.size())
+        );
         updateUniformBuffer(currentFrame);
 
         VkSubmitInfo submitInfo{};
@@ -801,7 +680,8 @@ private:
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
+        VkCommandBuffer currentCommandBuffer = commandManager.getCommandBuffer(currentFrame);
+        submitInfo.pCommandBuffers = &currentCommandBuffer;
 
         VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
         submitInfo.signalSemaphoreCount = 1;
@@ -875,7 +755,6 @@ private:
             vkDestroySemaphore(vulkanDevice.getLogicalDevice(), imageAvailableSemaphores[i], nullptr);
             vkDestroyFence(vulkanDevice.getLogicalDevice(), inFlightFences[i], nullptr);
         }
-        vkDestroyCommandPool(vulkanDevice.getLogicalDevice(), commandPool, nullptr);
         vkDestroySurfaceKHR(vulkanInstance.getInstance(), surface, nullptr);
         glfwDestroyWindow(window);
         glfwTerminate();

@@ -10,11 +10,12 @@ find_package(glm REQUIRED)
 
 set(SOURCES
     src/main.cpp
+    src/common/Vertex.cpp
     src/core/VulkanInstance.cpp
     src/core/VulkanDevice.cpp
     src/rendering/VulkanSwapchain.cpp
     src/rendering/VulkanGraphicsPipeline.cpp
-    src/common/Vertex.cpp
+    src/rendering/CommandManager.cpp
 )
 
 add_executable(vulkan_triangle ${SOURCES})
