@@ -13,6 +13,7 @@ set(SOURCES
     src/common/Vertex.cpp
     src/core/VulkanInstance.cpp
     src/core/VulkanDevice.cpp
+    src/core/VulkanApplication.cpp
     src/rendering/VulkanSwapchain.cpp
     src/rendering/VulkanGraphicsPipeline.cpp
     src/rendering/CommandManager.cpp

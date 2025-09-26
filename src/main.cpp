@@ -35,8 +35,10 @@
 #include <unordered_map>
 
 #include "common/Vertex.h"
+#include "common/VertexTypes.h"
 #include "core/VulkanInstance.h"
 #include "core/VulkanDevice.h"
+#include "core/VulkanApplication.h"
 #include "rendering/VulkanSwapchain.h"
 #include "rendering/VulkanGraphicsPipeline.h"
 #include "rendering/CommandManager.h"
