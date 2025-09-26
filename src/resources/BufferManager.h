@@ -5,6 +5,7 @@
 #include "../core/VulkanDevice.h"
 #include "../rendering/CommandManager.h"
 #include "../common/Vertex.h"
+#include "../common/VertexTypes.h"
 
 struct UniformBufferObject;
 
@@ -20,7 +21,7 @@ class BufferManager {
                      VkBuffer& buffer, VkDeviceMemory& bufferMemory);
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-        void createVertexBuffer(const std::vector<Vertex>& vertices, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory);
+        void createVertexBuffer(const std::vector<StandardVertex>& vertices, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory);
         void createIndexBuffer(const std::vector<uint32_t>& indices, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory);
         void createUniformBuffer(uint32_t maxFramesInFlight, std::vector<VkBuffer>& uniformBuffers, 
                              std::vector<VkDeviceMemory>& uniformBuffersMemory, 

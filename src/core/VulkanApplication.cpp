@@ -12,18 +12,18 @@
 #include <memory>
 
 VulkanApplication::VulkanApplication(const Config& config)
-    : config_(config), window_(nullptr), surface_(VK_NULL_HANDLE){
+    : config_(config), window_(nullptr), surface_(VK_NULL_HANDLE) {
 }
 
 VulkanApplication::~VulkanApplication(){
-    cleanUp();
+    cleanup();
 }
 
 void VulkanApplication::run(){
     initWindow();
     initVulkan();
     mainLoop();
-    cleanUp();
+    cleanup();
 }
 
 void VulkanApplication::initWindow(){
@@ -184,13 +184,25 @@ void VulkanApplication::cleanup() {
 
     onCleanup();
 
-    // Cleanup sync objects
     for (size_t i = 0; i < config_.maxFramesInFlight; i++) {
         if (vulkanDevice_ && vulkanDevice_->getLogicalDevice()) {
-            vkDestroySemaphore(vulkanDevice_->getLogicalDevice(), renderFinishedSemaphores_[i], nullptr);
-            vkDestroySemaphore(vulkanDevice_->getLogicalDevice(), imageAvailableSemaphores_[i], nullptr);
-            vkDestroyFence(vulkanDevice_->getLogicalDevice(), inFlightFences_[i], nullptr);
+            if (renderFinishedSemaphores_[i] != VK_NULL_HANDLE) {
+                vkDestroySemaphore(vulkanDevice_->getLogicalDevice(), renderFinishedSemaphores_[i], nullptr);
+                renderFinishedSemaphores_[i] = VK_NULL_HANDLE;
+            }
+            if (imageAvailableSemaphores_[i] != VK_NULL_HANDLE) {
+                vkDestroySemaphore(vulkanDevice_->getLogicalDevice(), imageAvailableSemaphores_[i], nullptr);
+                imageAvailableSemaphores_[i] = VK_NULL_HANDLE;
+            }
+            if (inFlightFences_[i] != VK_NULL_HANDLE) {
+                vkDestroyFence(vulkanDevice_->getLogicalDevice(), inFlightFences_[i], nullptr);
+                inFlightFences_[i] = VK_NULL_HANDLE;
+            }
         }
+    }
+
+    if (vulkanSwapchain_) {
+        vulkanSwapchain_.reset();
     }
 
     if (surface_ != VK_NULL_HANDLE && vulkanInstance_) {

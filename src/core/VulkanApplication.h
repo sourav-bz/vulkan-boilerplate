@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 #include <vector>
+#include <memory> 
 
 class VulkanInstance;
 class VulkanDevice;
@@ -23,8 +24,8 @@ class VulkanApplication{
             bool enableValidation = true;
         };
 
-        VulkanApplication(const Config& config = {});
-        virtual ~VulkanApplication() = default;
+        VulkanApplication(const Config& config);
+        virtual ~VulkanApplication();
 
         void run();
 
@@ -32,7 +33,6 @@ class VulkanApplication{
         virtual void initializeResources() {}
         virtual void updateUniforms(uint32_t currentImage) {}
         virtual void recordRenderCommands(VkCommandBuffer commnadBuffer, uint32_t imageIndex) {}
-        virtual void cleanup() {}
         virtual void onCleanup() {} 
 
         Config config_;
@@ -59,7 +59,7 @@ class VulkanApplication{
         void initVulkan();
         void mainLoop();
         void drawFrame();
-        void cleanUp();
+        void cleanup();
         void recreateSwapChain();
         void createSyncObjects();
 

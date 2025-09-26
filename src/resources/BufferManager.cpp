@@ -95,7 +95,7 @@ void BufferManager::createIndexBuffer(const std::vector<uint32_t>& indices, VkBu
     vkFreeMemory(vulkanDevice->getLogicalDevice(), stagingBufferMemory, nullptr);
 }
 
-void BufferManager::createVertexBuffer(const std::vector<Vertex>& vertices, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory){
+void BufferManager::createVertexBuffer(const std::vector<StandardVertex>& vertices, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory){
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
     VkBuffer stagingBuffer;

@@ -4,20 +4,27 @@
 #include <glm/glm.hpp>
 #include <array>
 #include <vector>
+#include <functional>
 
-// Base vertex interface
-class IVertex {
-public:
-    virtual ~IVertex() = default;
-    virtual VkVertexInputBindingDescription getBindingDescription() const = 0;
-    virtual std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() const = 0;
-};
+namespace std {
+    template<> struct hash<glm::vec2> {
+        size_t operator()(glm::vec2 const& v) const {
+            return hash<float>()(v.x) ^ (hash<float>()(v.y) << 1);
+        }
+    };
+    
+    template<> struct hash<glm::vec3> {
+        size_t operator()(glm::vec3 const& v) const {
+            return hash<float>()(v.x) ^ (hash<float>()(v.y) << 1) ^ (hash<float>()(v.z) << 2);
+        }
+    };
+}
 
 // Basic vertex with position only
-struct BasicVertex : public IVertex {
+struct BasicVertex {
     glm::vec3 pos;
 
-    VkVertexInputBindingDescription getBindingDescription() const override {
+    static VkVertexInputBindingDescription getBindingDescription(){
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = 0;
         bindingDescription.stride = sizeof(BasicVertex);
@@ -25,7 +32,7 @@ struct BasicVertex : public IVertex {
         return bindingDescription;
     }
 
-    std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() const override {
+    static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions(){
         std::vector<VkVertexInputAttributeDescription> attributeDescriptions(1);
         
         attributeDescriptions[0].binding = 0;
@@ -42,11 +49,11 @@ struct BasicVertex : public IVertex {
 };
 
 // Vertex with position and color
-struct ColoredVertex : public IVertex {
+struct ColoredVertex {
     glm::vec3 pos;
     glm::vec3 color;
 
-    VkVertexInputBindingDescription getBindingDescription() const override {
+    static VkVertexInputBindingDescription getBindingDescription() {
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = 0;
         bindingDescription.stride = sizeof(ColoredVertex);
@@ -54,7 +61,7 @@ struct ColoredVertex : public IVertex {
         return bindingDescription;
     }
 
-    std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() const override {
+    static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
         std::vector<VkVertexInputAttributeDescription> attributeDescriptions(2);
         
         attributeDescriptions[0].binding = 0;
@@ -76,12 +83,12 @@ struct ColoredVertex : public IVertex {
 };
 
 // Standard vertex with position, color, and texture coordinates (your current Vertex)
-struct StandardVertex : public IVertex {
+struct StandardVertex {
     glm::vec3 pos;
     glm::vec3 color;
     glm::vec2 texCoord;
 
-    VkVertexInputBindingDescription getBindingDescription() const override {
+    static VkVertexInputBindingDescription getBindingDescription() {
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = 0;
         bindingDescription.stride = sizeof(StandardVertex);
@@ -89,7 +96,7 @@ struct StandardVertex : public IVertex {
         return bindingDescription;
     }
 
-    std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() const override {
+    static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
         std::vector<VkVertexInputAttributeDescription> attributeDescriptions(3);
         
         attributeDescriptions[0].binding = 0;
