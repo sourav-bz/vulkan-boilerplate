@@ -1,58 +1,65 @@
-## Vulkan Boilerplate Setup
+# Vulkan Boilerplate
 
-### Tech stack & Libraries:
+A Vulkan rendering engine boilerplate written in C++.
 
-- Vulkan
-- C++
-- GLFW
+## Dependencies
+
+- Vulkan SDK
+- GLFW3
+- GLM
+- ImGui
 - stb_image
-- ImGUI
+- tiny_obj_loader
 
-### Folder structure
+## Build Instructions
+
+Clone the repository with submodules:
+
+```bash
+git clone --recursive <repository-url>
+```
+
+Or if you've already cloned it, initialize the submodules:
+
+```bash
+git submodule update --init --recursive
+```
+
+Then build the project:
+
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
+
+## Project Structure
 
 ```
-├── CMakeLists.txt
-├── readme.md
-├── .gitignore
-├── src/
-│ ├── main.cpp
-│ │
-│ ├── core/
-│ │ ├── Application.cpp
-│ │ ├── VulkanInstance.cpp
-│ │ ├── VulkanDevice.cpp
-│ │ └── VulkanValidation.h
-│ │
-│ ├── rendering/
-│ │ ├── VulkanRenderer.cpp
-│ │ ├── Swapchain.cpp
-│ │ ├── RenderPass.cpp
-│ │ ├── GraphicsPipeline.cpp
-│ │ └── CommandManager.h
-│ │
-│ ├── resources/
-│ │ ├── Buffer.cpp
-│ │ ├── Image.cpp
-│ │ ├── Texture.cpp
-│ │ ├── Mesh.cpp
-│ │ └── Shader.h
-│ │
-│ ├── descriptors/
-│ │ ├── DescriptorSetLayout.cpp
-│ │ ├── DescriptorPool.cpp
-│ │ └── DescriptorSet.cpp
-│ │
-│ ├── scene/
-│ │ ├── Camera.cpp
-│ │ ├── Transform.h
-│ │ ├── Model.cpp
-│ │ └── Scene.h
-│ │
-│ ├── input/
-│ │ └── InputManager.cpp
-│ │
-│ └── utils/
-│ ├── FileUtils.cpp
-│ ├── VulkanUtils.cpp
-│ └── Math.h
+src/
+├── main.cpp
+├── common/           # Vertex definitions and types
+├── core/            # Vulkan instance, device, and application
+├── rendering/       # Swapchain, graphics pipeline, commands
+├── resources/       # Buffer and texture management
+├── descriptors/     # Descriptor set management
+└── ui/              # ImGui integration
+
+assets/
+├── fonts/           # Font files
+├── models/          # 3D models
+└── textures/        # Texture files
+
+shaders/             # GLSL shaders and compiled SPIR-V
+
+external/
+├── imgui/           # Dear ImGui submodule
+├── imgui-cmake/     # CMake wrapper for ImGui
+├── stb/             # STB image loading library
+└── tiny_obj/        # Tiny OBJ loader
 ```
+
+## Submodules
+
+This project uses Dear ImGui as a git submodule. When cloning, use the `--recursive` flag to automatically get all submodules.
