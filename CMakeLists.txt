@@ -18,6 +18,7 @@ set(SOURCES
     src/rendering/CommandManager.cpp
     src/resources/BufferManager.cpp
     src/resources/TextureManager.cpp
+    src/descriptors/DescriptorManager.cpp
 )
 
 add_executable(vulkan_triangle ${SOURCES})

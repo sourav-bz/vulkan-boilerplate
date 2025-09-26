@@ -42,6 +42,7 @@
 #include "rendering/CommandManager.h"
 #include "resources/BufferManager.h"
 #include "resources/TextureManager.h"
+#include "descriptors/DescriptorManager.h"
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -71,6 +72,7 @@ private:
     CommandManager commandManager;
     BufferManager bufferManager;
     TextureManager textureManager;
+    DescriptorManager descriptorManager;
 
     GLFWwindow* window;
     VkSurfaceKHR surface;
@@ -89,7 +91,6 @@ private:
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void*> uniformBuffersMapped;
-    VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
@@ -136,6 +137,7 @@ private:
         commandManager.initialize(vulkanDevice, MAX_FRAMES_IN_FLIGHT);
         bufferManager.initialize(vulkanDevice, commandManager);
         textureManager.initialize(vulkanDevice, commandManager, bufferManager);
+        descriptorManager.initialize(vulkanDevice);
         textureManager.createDepthResources(vulkanSwapchain.getExtent(), depthImage, depthImageMemory, depthImageView);
         createFramebuffers();
         textureManager.createTextureFromFile(TEXTURE_PATH, textureImage, textureImageMemory, textureImageView);
@@ -144,8 +146,8 @@ private:
         bufferManager.createVertexBuffer(vertices, vertexBuffer, vertexBufferMemory);
         bufferManager.createIndexBuffer(indices, indexBuffer, indexBufferMemory);
         bufferManager.createUniformBuffer(MAX_FRAMES_IN_FLIGHT, uniformBuffers, uniformBuffersMemory, uniformBuffersMapped);
-        createDescriptorPool();
-        createDescriptorSets();
+        descriptorManager.createDescriptorPool(MAX_FRAMES_IN_FLIGHT);
+        descriptorManager.createDescriptorSets(vulkanPipeline.getDescriptorSetLayout(), MAX_FRAMES_IN_FLIGHT, uniformBuffers, textureImageView, textureSampler, descriptorSets);
         createSyncObjects();
     }
 
@@ -186,77 +188,6 @@ private:
             }else{
                 std::cout<< "Successfully created inFlightFence for frame " << i << " - " << inFlightFenceResult << std::endl;
             }
-        }
-    }
-
-    void createDescriptorSets(){
-        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, vulkanPipeline.getDescriptorSetLayout());
-        VkDescriptorSetAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = descriptorPool;
-        allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        allocInfo.pSetLayouts = layouts.data();
-
-        descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-        VkResult descriptorSetsResult = vkAllocateDescriptorSets(vulkanDevice.getLogicalDevice(), &allocInfo, descriptorSets.data());
-        if (descriptorSetsResult != VK_SUCCESS) {
-            std::cout << "failed to allocate descriptor sets! - " << descriptorSetsResult << std::endl;
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        }else{
-            std::cout << "Successfully created descriptor sets - " << descriptorSetsResult << std::endl;
-        }
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffers[i];
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
-
-            VkDescriptorImageInfo imageInfo{};
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = textureImageView;
-            imageInfo.sampler = textureSampler;
-
-            std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[0].dstSet = descriptorSets[i];
-            descriptorWrites[0].dstBinding = 0;
-            descriptorWrites[0].dstArrayElement = 0;
-            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-            descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[1].dstSet = descriptorSets[i];
-            descriptorWrites[1].dstBinding = 1;
-            descriptorWrites[1].dstArrayElement = 0;
-            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorWrites[1].descriptorCount = 1;
-            descriptorWrites[1].pImageInfo = &imageInfo;
-
-            vkUpdateDescriptorSets(vulkanDevice.getLogicalDevice(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-        }
-    }
-
-    void createDescriptorPool(){
-        std::array<VkDescriptorPoolSize, 2> poolSizes{};
-        poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-        VkDescriptorPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-        poolInfo.pPoolSizes = poolSizes.data();
-        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-        VkResult descriptorPoolResult = vkCreateDescriptorPool(vulkanDevice.getLogicalDevice(), &poolInfo, nullptr, &descriptorPool);
-        if (descriptorPoolResult != VK_SUCCESS) {
-            std::cout << "failed to create descriptor pool! - " << descriptorPoolResult << std::endl;
-            throw std::runtime_error("failed to create descriptor pool!");
-        }else{
-            std::cout << "Successfully created descriptor pool - " << descriptorPoolResult << std::endl;
         }
     }
 
@@ -450,7 +381,7 @@ private:
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             bufferManager.destroyBuffer(uniformBuffers[i], uniformBuffersMemory[i]);
         }
-        vkDestroyDescriptorPool(vulkanDevice.getLogicalDevice(), descriptorPool, nullptr);
+        descriptorManager.destroyDescriptorPool();
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroySemaphore(vulkanDevice.getLogicalDevice(), renderFinishedSemaphores[i], nullptr);
             vkDestroySemaphore(vulkanDevice.getLogicalDevice(), imageAvailableSemaphores[i], nullptr);
