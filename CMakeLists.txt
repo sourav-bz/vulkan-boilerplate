@@ -13,6 +13,8 @@ set(SOURCES
     src/core/VulkanInstance.cpp
     src/core/VulkanDevice.cpp
     src/rendering/VulkanSwapchain.cpp
+    src/rendering/VulkanGraphicsPipeline.cpp
+    src/common/Vertex.cpp
 )
 
 add_executable(vulkan_triangle ${SOURCES})
