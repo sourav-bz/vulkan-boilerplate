@@ -65,10 +65,7 @@ private:
     VkImageView depthImageView_;
     std::vector<VkFramebuffer> swapChainFramebuffers_;
 
-    // GUI state variables (from the ImGui example)
-    bool show_demo_window = true;
-    bool show_another_window = true;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    ImVec4 clear_color = ImVec4(1.0f, 1.0f, 1.0f, 1.00f);
     
     // Transformation control variables
     glm::vec3 modelPosition = glm::vec3(0.0f, 0.0f, 0.0f);

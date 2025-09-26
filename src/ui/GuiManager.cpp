@@ -40,12 +40,18 @@ void GuiManager::initialize(GLFWwindow* window, VkInstance instance, VulkanDevic
     
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    
-    // When viewports are enabled we tweak WindowRounding/WindowBg
+
+    // Force consistent background for all window types
     ImGuiStyle& style = ImGui::GetStyle();
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.05f, 0.05f, 0.05f, 1.0f); // Full opacity
+    style.Colors[ImGuiCol_ChildBg] = ImVec4(0.05f, 0.05f, 0.05f, 1.0f);
+
+    // Ensure docked windows respect the background color
+    style.Colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.05f, 0.05f, 0.05f, 1.0f);
+
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
         style.WindowRounding = 0.0f;
-        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+        style.Colors[ImGuiCol_WindowBg] = ImVec4(0.05f, 0.05f, 0.05f, 1.0f); // Force same color
     }
     
     // Setup Platform/Renderer backends
