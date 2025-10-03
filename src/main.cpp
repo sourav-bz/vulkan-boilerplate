@@ -12,7 +12,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <chrono>
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -22,7 +21,6 @@
 #include <array>
 #include <unordered_map>
 
-#include "common/Vertex.h"
 #include "common/VertexTypes.h"
 #include "core/VulkanApplication.h"
 #include "rendering/VulkanGraphicsPipeline.h"
