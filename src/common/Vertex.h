@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
 #include <array>
+#include <functional>
 
 struct Vertex {
     glm::vec3 pos;
